@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('leads', function (Blueprint $table) {
             $table->id();
-            $table->string('external_id', 64)->unique();
+            $table->string('external_id', 64)->index();
             $table->dateTime('created_at'); // Date from the source file.
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
