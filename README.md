@@ -1,6 +1,10 @@
 # Smart Orange Test Project
 
-A Laravel development project running in Docker.
+A Laravel application for importing leads from XLSX files.
+
+The import runs synchronously in a single HTTP request with
+`max_execution_time=30`. All source rows are preserved, including
+duplicate `external_id` values.
 
 ## Technology stack
 
@@ -67,6 +71,110 @@ The setup script:
 Open **http://localhost:8080**.
 
 The web server is bound to `127.0.0.1`, so it is accessible from your local machine.
+
+## Importing leads
+
+1. Open http://localhost:8080.
+2. Select the XLSX file supplied with the assignment.
+3. Click **Check File** to validate the headers and preview the first 5 data rows.
+4. Click **Import Leads** to import the complete file.
+
+Previewing the file is optional and does not save records to the database.
+The complete import also validates the headers.
+
+After a successful import, the page displays:
+
+- The number of imported records.
+- Elapsed import time in seconds.
+- Peak PHP memory usage in MB.
+
+Each import appends records to the database. Importing the same file again
+creates another set of records. Duplicate `external_id` values are preserved.
+
+If a validation or database error occurs, the entire import is rolled back.
+
+### Input file
+
+Use the XLSX file supplied with the assignment. The original dataset is not
+included in this repository.
+
+Select the file directly from your computer using the upload form.
+There is no need to copy it into the project directory.
+
+Only `.xlsx` files up to 32 MB are accepted.
+
+### Expected XLSX structure
+
+Only the first worksheet is processed. Its first row must contain the following
+15 column headers in this exact order:
+
+| Position | Column |
+| --- | --- |
+| 1 | `external_id` |
+| 2 | `created_at` |
+| 3 | `first_name` |
+| 4 | `last_name` |
+| 5 | `phone` |
+| 6 | `email` |
+| 7 | `city` |
+| 8 | `source` |
+| 9 | `utm_campaign` |
+| 10 | `product` |
+| 11 | `budget_uah` |
+| 12 | `status` |
+| 13 | `manager` |
+| 14 | `comment` |
+| 15 | `next_contact_at` |
+
+Header names are case-sensitive. Leading and trailing whitespace is trimmed.
+Missing, extra, or reordered column headers are rejected.
+
+### Data requirements
+
+- All 15 column headers are required.
+- `external_id` and `created_at` must have values in every data row.
+- Other fields may be empty.
+- Date cells must use an Excel date/time format.
+- `budget_uah` must be numeric when provided.
+- Zero values are preserved; empty optional values are stored as `NULL`.
+- The file must contain at least one data row.
+
+## Implementation
+
+- XLSX files are read using OpenSpout.
+- Worksheet rows are processed sequentially.
+- Shared string tables with up to 250,000 entries are cached in memory
+  to avoid repeated disk reads. Larger or unknown tables use OpenSpout's
+  default caching strategy.
+- Records are inserted using Laravel Query Builder in batches of 1,000.
+- The complete import runs within one database transaction.
+- Validation or database errors roll back the transaction.
+- `external_id` has a non-unique index because the supplied file contains
+  repeated values. Each record has its own primary key.
+
+The shared string threshold limits the number of entries, not their
+total memory size. This strategy was selected for the supplied dataset.
+
+Database structure is defined by the migrations in `database/migrations`.
+
+## Performance verification
+
+The supplied XLSX file was imported through the web interface into
+an empty MySQL table.
+
+| Metric | Result |
+| --- | --- |
+| Source data rows | 100,000 |
+| Inserted records | 100,000 |
+| Import time | REPLACE_WITH_MEASURED_VALUE seconds |
+| Peak PHP memory | REPLACE_WITH_MEASURED_VALUE MB |
+| PHP execution limit | 30 seconds |
+| PHP memory limit | 256 MB |
+
+The reported import time covers XLSX reading, row conversion, database
+inserts, and transaction commit. It excludes the browser upload time.
+
+Environment: PHP 8.2.34, Laravel 12.69.3, MySQL 8.0, Docker on Ubuntu.
 
 ## Daily use
 
