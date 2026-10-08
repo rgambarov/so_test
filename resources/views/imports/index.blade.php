@@ -18,6 +18,19 @@
 <main>
     <h1>{{ config('app.name') }}</h1>
     <p class="muted">Lead Import · Laravel 12 · PHP 8.2</p>
+    @if (session()->has('import_result'))
+        @php($result = session('import_result'))
+
+        <section role="status">
+            <h2>Import completed</h2>
+            <p>
+                Imported leads:
+                <strong>{{ number_format($result['imported'], 0, '.', ' ') }}</strong>
+            </p>
+            <p>Import time: {{ $result['elapsed_seconds'] }} seconds</p>
+            <p>Peak PHP memory: {{ $result['peak_memory_mb'] }} MB</p>
+        </section>
+    @endif
     <section>
         <p>Leads in the database: <strong>{{ number_format($count, 0, '.', ' ') }}</strong></p>
         <p>Select an XLSX file to validate its headers and preview the first {{ config('import.preview_rows') }} rows.</p>
@@ -27,8 +40,18 @@
             <input id="file" name="file" type="file" accept=".xlsx" required>
             @error('file') <p class="error" role="alert">{{ $message }}</p> @enderror
             <button type="submit">Check File</button>
+
+            <button
+                type="submit"
+                formaction="{{ route('imports.store') }}"
+            >
+                Import Leads
+            </button>
         </form>
-        <p class="muted">This check reads only the beginning of the file. Saving leads to the database has not been implemented yet.</p>
+        <p class="muted">
+            Check File previews the first {{ config('import.preview_rows') }} rows.
+            Import Leads saves all rows to the database.
+        </p>
     </section>
     @if ($preview !== null)
         <section>

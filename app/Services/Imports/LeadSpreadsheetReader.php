@@ -12,7 +12,9 @@ class LeadSpreadsheetReader
     /** Streams the first sheet; closes the reader even when iteration fails. */
     public function rows(string $path): Generator
     {
-        $reader = new Reader;
+        $reader = new Reader(
+            cachingStrategyFactory: new SharedStringsCacheFactory(),
+        );
         $reader->open($path);
         try {
             foreach ($reader->getSheetIterator() as $sheet) {
